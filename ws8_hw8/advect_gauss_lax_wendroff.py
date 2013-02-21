@@ -27,12 +27,12 @@ def analytic(x,t):
 # MAIN ---------------------------------------------------------------------------
 
 # parameters
-dx = 0.1
+dxx = [0.1,0.05]
 v = 0.1
 # set up grid
-x = arange(0,100,dx)
-n = len(x)
-cfl = array([0.5,1.0,2.0])
+#x = arange(0,100,dx)
+#n = len(x)
+cfl = 1.0
 t = 0.0
 tf=800.0
 
@@ -40,30 +40,31 @@ tf=800.0
 sigma = sqrt(15.0)
 x0 = 30.0
 
-#set up initial conditions
-y = analytic(x,0)
-yold2 = y
-yold = y
 
 # evolve (and show evolution)
 ion()  # "interaction on" - required for animation via draw()
 figure()
-ylim([0,1])
-plot(x,y,'x-') # numerical data
-plot(x,analytic(x,t),'r-') # analytic data
-show()
+#ylim([0,1])
+#plot(x,y,'x-') # numerical data
+#plot(x,analytic(x,t),'r-') # analytic data
+#show()
 
 err=[]
-for idt in range(len(cfl)):
+for idt in range(len(dxx)):
+    dx=dxx[idt]
+    x = arange(0,100,dx)
+    n=len(x)
+
     #set up initial conditions
     y = analytic(x,0)
     yold2 = y
     yold = y
 
-    dt = cfl[idt]*dx/abs(v)
+    dt = cfl*dx/abs(v)
     ntmax = (int)(tf/dt+1)
     err.append(zeros(ntmax))
     nplot=idt-2
+    ipeak=int(where(x==30.0)[0])
 
     for it in range(ntmax):
         t = it*dt
@@ -76,7 +77,9 @@ for idt in range(len(cfl)):
         yana = analytic(x,t) # get analytic result for time t
         
         # compute error estimate
-        err[idt][it] = sqrt(sum([(yana[i]-y[i])**2 for i in range(len(x))]))/n
+        #err[idt][it] = sum([abs(yana[i]-y[i]) for i in range(len(x))])/n
+        ipeak+=1
+        err[idt][it] = abs(yana[ipeak]-y[ipeak]) if ipeak < len(x) else 0
 
         """
         try:
@@ -103,15 +106,17 @@ for idt in range(len(cfl)):
             ha = 60 if (nplot <=3 or idt==2) else 10
             va2 = 0.4 if idt==2 else 0.6
             text(ha,0.8*max(max(y),max(yana)),'t={0}'.format(t))
-            text(ha,va2*max(max(y),max(yana)),'cfl={0}'.format(cfl[idt]))
+            text(ha,va2*max(max(y),max(yana)),'dx={0}'.format(dxx[idt]))
             draw()
 
 
 #savefig('lax_wendroff_snapshots.pdf')
-show()
+#show()
 ioff()
 clf()
 
+"""
+# Plot errors for different cfl conditions
 for idt in range(len(cfl)-1):
     dt=cfl[idt]*dx/abs(v)
     t=arange(0,dt*(int)(tf/dt+1),dt)
@@ -124,11 +129,30 @@ legend(['cfl={0}'.format(cfl[0]),'cfl={0}'.format(cfl[1]),
         'cfl={0}'.format(cfl[2])],loc='best')
 savefig('lax_wendroff_err.pdf')
 show()
+"""
 
-err2=[err[0][i] for i in range(len(err[0])) if (i%2==0 and not i==1)]
-dt=cfl[1]
-t=arange(0,dt*(int)(tf/dt+1),dt)
-print len(t), len(err[1]), len(err2)
-plot(t,array(err[1])/array(err2))
+# Determine convergence
+dt=cfl*dxx[0]/abs(v)
+t1=arange(0,dt*(int)(tf/dt+1),dt)
+ilast1=where(err[0]==0)[0][0]-1
+
+dt=cfl*dxx[1]/abs(v)
+t2=arange(0,dt*(int)(tf/dt+1),dt)
+ilast2=where(err[1]==0)[0][0]-1
+
+plot(t1[:ilast1],err[0][:ilast1],t2[:ilast2],err[1][:ilast2])
+xlabel('time (s)')
+ylabel('error')
+legend(['dx={0}'.format(dxx[0]),'dx={0}'.format(dxx[1])],loc='best')
 savefig('lax_wendroff_convg.pdf')
 show()
+
+err2=[]
+for i,t in enumerate(t1):
+    if t in t2: err2.append(err[1][where(t2==t)])
+if len(err[0]) != len(err2): 
+    print 'len(err[0]) != len(err2)!'
+    sys.exit()
+
+err_ratio=transpose([err[0][i]/err2[i] for i in range(ilast1)])[0]
+print err_ratio

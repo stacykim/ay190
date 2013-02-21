@@ -63,6 +63,7 @@ for idt in range(len(cfl)):
     ntmax = (int)(tf/dt+1)
     err.append(zeros(ntmax))
     nplot=0
+    ipeak=int(where(x==30.0)[0])
 
     for it in range(ntmax):
         t = it*dt
@@ -75,7 +76,9 @@ for idt in range(len(cfl)):
         yana = analytic(x,t) # get analytic result for time t
         
         # compute error estimate
-        err[idt][it] = sqrt(sum([(yana[i]-y[i])**2 for i in range(len(x))]))/n
+        ipeak+=1
+        err[idt][it] = abs(yana[ipeak]-y[ipeak]) if ipeak < len(x) else 0
+        #err[idt][it] = sqrt(sum([(yana[i]-y[i])**2 for i in range(len(x))]))/n
 
         """
         try:
@@ -120,8 +123,11 @@ for idt in range(len(cfl)):
 
 xlabel('t')
 ylabel('error')
-ylim([0,0.001])
+ylim([0,0.05])
 legend(['cfl={0}'.format(cfl[0]),'cfl={0}'.format(cfl[1]),
         'cfl={0}'.format(cfl[2])],loc='best')
 savefig('leapfrog_err.pdf')
 show()
+
+print err[0][600:610]
+print err[1][300:305]
